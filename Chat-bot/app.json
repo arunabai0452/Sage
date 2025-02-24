@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Chat-bot",
+    "slug": "Chat-bot",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.anonymous.Chat-bot"
+    }
+  }
+}
