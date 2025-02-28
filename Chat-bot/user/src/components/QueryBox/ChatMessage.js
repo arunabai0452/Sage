@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     alignSelf: "flex-end",
-    backgroundColor: '"#3369FF',
+    backgroundColor: "#3369FF",
   },
   botMessage: {
     alignSelf: "flex-start",

@@ -11,15 +11,19 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import HTMLView from "react-native-htmlview";
-import SendButton from "../../assets/icons/sendButton";
 import DocumentPicker from "react-native-document-picker";
 import BackgroundSVG from "../../assets/icons/BackgroundSVG";
+import {
+  initializeAgoraChat,
+  loginAgoraUserWithToken,
+  addAgoraListeners,
+  sendMessageToBot,
+} from "../API/AgoraAPI";
 
 const ChatbotScreen = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [showCart, setShowCart] = useState(true);
-  const [showFeedback, setShowFeedback] = useState(false);
 
   const suggestions = [
     "Admissions",
@@ -30,85 +34,48 @@ const ChatbotScreen = () => {
     "Bus Schedule",
   ];
 
+  const USERNAME = "user123";
+  const PASSWORD = "user123";
+  const TOKEN = "YWMtOV8EHPPLEe-0jN3Jss_N-RBFmRUpQ0DOj9Ki8BCWU3W_fyRA8xgR74CnDWsnEgSXAwMAAAGVP1AFrTeeSAAA7kV1AgoV3U0wKUC6v-D1lLympYP098732Wc_cSxHIw"
+  const BOT_USERNAME = "mimicbot";
+
   useEffect(() => {
-    if (input.trim() === "" && messages.length === 0) {
-      setShowCart(true);
-    } else {
-      setShowCart(false);
+    async function setupChat() {
+      await initializeAgoraChat();
+      await loginAgoraUserWithToken(USERNAME, PASSWORD, TOKEN);
+      addAgoraListeners({
+        onConnected: () => console.log("✅ user123 connected"),
+        onDisconnected: () => console.log("❌ user123 disconnected"),
+        onMessageReceived: (msgs) => {
+          msgs.forEach((m) => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                message: m.body.content, 
+                type: m.from === BOT_USERNAME ? "bot" : "user",
+              },
+            ]);
+          });
+        },
+      });
     }
+    setupChat();
+  }, []);
+
+  useEffect(() => {
+    setShowCart(input.trim() === "" && messages.length === 0);
   }, [input, messages]);
 
-  const handleDislikePress = () => {
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { id: Date.now(), type: "feedback" }, // Add feedback card as a bot message
-    ]);
-  };
-  const FeedbackCard = () => {
-    const [rating, setRating] = useState(null);
-    const [feedback, setFeedback] = useState("");
-
-    return (
-      <View style={styles.feedbackCard}>
-        {/* Header */}
-        <Text style={styles.feedbackTitle}>How can we do better?</Text>
-
-        {/* Input Field */}
-        <TextInput
-          style={styles.feedbackInput}
-          placeholder="Enter your feedback"
-          placeholderTextColor="#aaa"
-          value={feedback}
-          onChangeText={setFeedback}
-        />
-
-        {/* Rating Selection */}
-        <Text style={styles.feedbackText}>
-          From 1-5 how accurate were the responses?
-        </Text>
-        <View style={styles.ratingContainer}>
-          {[1, 2, 3, 4, 5].map((num) => (
-            <TouchableOpacity
-              key={num}
-              onPress={() => setRating(num)}
-              style={styles.ratingCircle}
-            >
-              <Text style={{ color: rating === num ? "#D81B60" : "white" }}>
-                {num}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={() => console.log(feedback, rating)}
-        >
-          <Text style={styles.submitText}>Submit</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  const handleSetMessage = (inputText) => {
+    if (inputText.trim() !== "") {
+      const userMessage = { id: Date.now(), message: inputText, type: "user" };
+      setMessages((prev) => [...prev, userMessage]);
+      sendMessageToBot(BOT_USERNAME, inputText);
+      setInput("");
+    }
   };
 
-  const handleSetMessage = (input) => { 
-    if (input.trim() !== "") {
-                const userMessage = {
-                  id: messages.length,
-                  message: input,
-                  type: "user",
-                };
-
-                const botReply = {
-                  id: messages.length + 1,
-                  message: `You said: "${input}". I'm still learning! 😊`,
-                  type: "bot",
-                };
-
-                setMessages([...messages, userMessage, botReply]);
-                setInput(""); // Clear input after sending
-              }
-  };
   const handleFilePick = async () => {
     try {
       const result = await DocumentPicker.pick({
@@ -131,22 +98,17 @@ const ChatbotScreen = () => {
       <BackgroundSVG />
       {showCart && (
         <>
-          {/* Title & Subtitle */}
           <View style={styles.titleContainer}>
             <Text style={styles.title}>I’m COLTIE SAGE</Text>
             <Text style={styles.subtitle}>
-              Ready to chat? Just type your question and get answers! Need some
-              ideas to get started?
+              Ready to chat? Just type your question and get answers!
             </Text>
           </View>
-          {/* 2x2 Button Grid */}
           <View style={styles.gridContainer}>
             <View style={styles.row}>
               <TouchableOpacity
                 style={styles.card}
-                onPress={() => {
-                  setInput("I want to know more about COLTIE?");
-                }}
+                onPress={() => setInput("I want to know more about COLTIE?")}
               >
                 <Ionicons name="help-circle" size={24} color="white" />
                 <Text style={styles.cardTitle}>Ask a question</Text>
@@ -154,7 +116,6 @@ const ChatbotScreen = () => {
                   “I want to know more about COLTIE?”
                 </Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={styles.card} onPress={handleFilePick}>
                 <Ionicons name="attach" size={24} color="white" />
                 <Text style={styles.cardTitle}>Upload a file</Text>
@@ -163,13 +124,12 @@ const ChatbotScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-
             <View style={styles.row}>
               <TouchableOpacity
                 style={styles.card}
-                onPress={() => {
-                  setInput("Find a profile with similar research interests.");
-                }}
+                onPress={() =>
+                  setInput("Find a profile with similar research interests.")
+                }
               >
                 <Ionicons name="people" size={24} color="white" />
                 <Text style={styles.cardTitle}>Get matched</Text>
@@ -177,12 +137,11 @@ const ChatbotScreen = () => {
                   “Find a profile with similar research interests.”
                 </Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={[styles.card, styles.highlightedCard]}
-                onPress={() => {
-                  setInput("What resources are available at my University?");
-                }}
+                onPress={() =>
+                  setInput("What resources are available at my University?")
+                }
               >
                 <Ionicons name="school" size={24} color="white" />
                 <Text style={styles.cardTitle}>Find Support</Text>
@@ -202,10 +161,11 @@ const ChatbotScreen = () => {
               <View
                 style={[
                   item.type !== "feedback" && styles.messageBubble,
-                  item.type === "user" ? styles.userMessage : styles.botMessage,
+                  item.type === "user"
+                    ? styles.userMessage
+                    : styles.botMessage,
                 ]}
               >
-                {item.type === "feedback" && <FeedbackCard />}
                 {item.type !== "feedback" && (
                   <Text style={{ color: "#fff", fontSize: 16 }}>
                     <HTMLView
@@ -215,32 +175,9 @@ const ChatbotScreen = () => {
                   </Text>
                 )}
               </View>
-              {item.type === "bot" && (
-                <View style={styles.feedbackContainer}>
-                  <Text style={styles.feedbackAskText}>
-                    How was this response?
-                  </Text>
-                  <View style={styles.feedbackIcons}>
-                    <TouchableOpacity onPress={() => console.log("Thumbs Up")}>
-                      <Ionicons
-                        name="thumbs-up-outline"
-                        size={20}
-                        color="white"
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleDislikePress}>
-                      <Ionicons
-                        name="thumbs-down-outline"
-                        size={20}
-                        color="white"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
             </View>
           )}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.chatContainer}
         />
       )}
@@ -260,18 +197,13 @@ const ChatbotScreen = () => {
           showsHorizontalScrollIndicator={false}
         />
       </View>
-
-      {/* Input Field */}
       <View style={styles.inputContainer}>
-        {/* Attachment Button */}
         <TouchableOpacity
           style={styles.attachmentButton}
           onPress={handleFilePick}
         >
           <Ionicons name="add" size={24} color="white" />
         </TouchableOpacity>
-
-        {/* Rounded Text Input */}
         <View style={styles.roundedInput}>
           <TextInput
             style={styles.input}
@@ -280,13 +212,15 @@ const ChatbotScreen = () => {
             value={input}
             onChangeText={setInput}
             onSubmitEditing={() => handleSetMessage(input)}
-            returnKeyType="send" // Makes return key look like "Send"
+            returnKeyType="send"
           />
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -356,7 +290,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#D81B60", // Pink color for button
+    backgroundColor: "#D81B60",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 8,
@@ -365,7 +299,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff", // Light transparent white
+    backgroundColor: "#fff",
     borderRadius: 20,
     paddingLeft: 15,
     height: 40,
@@ -392,9 +326,9 @@ const styles = StyleSheet.create({
   },
   messageText: {
     p: {
-      color: "#fff", // Ensures text inside <p> tags is white
+      color: "#fff",
     },
-    color: "#fff", // Ensures general text color is white
+    color: "#fff",
     fontWeight: "bold",
     marginTop: 5,
     marginBottom: 5,
@@ -416,18 +350,16 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     maxWidth: "65%",
   },
-
   feedbackAskText: {
     color: "#8C8C8C",
     fontSize: 10,
     fontWeight: "bold",
   },
-
   feedbackIcons: {
     flexDirection: "row",
     marginLeft: 10,
     marginTop: -10,
-    gap: 15, // Space between thumbs up/down icons
+    gap: 15,
   },
   feedbackCard: {
     backgroundColor: "#F2F2F2",
@@ -439,14 +371,12 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     maxHeight: "100%",
   },
-
   feedbackTitle: {
     color: "#D81B60",
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 10,
   },
-
   feedbackInput: {
     width: "100px",
     height: 230,
@@ -455,19 +385,16 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
   },
-
   feedbackText: {
     color: "black",
     marginBottom: 10,
   },
-
   ratingContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
     marginBottom: 10,
   },
-
   ratingCircle: {
     width: 25,
     height: 25,
@@ -477,22 +404,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   submitButton: {
     backgroundColor: "#D81B60",
     paddingVertical: 8,
     paddingHorizontal: 20,
   },
-
   submitText: {
     color: "white",
     fontSize: 14,
     fontWeight: "bold",
-    textAlign: "center", // Ensure text inside is centered
+    textAlign: "center",
   },
   suggestionsContainer: {
     position: "absolute",
-    bottom:110,
+    bottom: 110,
     paddingVertical: 5,
     paddingHorizontal: 15,
     alignItems: "center",

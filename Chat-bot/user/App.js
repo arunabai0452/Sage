@@ -14,30 +14,18 @@ function CustomHeader({ navigation }) {
     <View style={styles.headerWrapper}>
       {/* Transparent Overlay */}
       <View style={styles.headerOverlay} />
-
       <View style={styles.headerContainer}>
         {/* Left - Back Button */}
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.headerButton}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-
         {/* Center - Profile Image & Name */}
         <View style={styles.headerTitle}>
-          <Image
-            source={require("./assets/img/SageButton.png")}
-            style={styles.profileImage}
-          />
+          <Image source={require("./assets/img/SageButton.png")} style={styles.profileImage} />
           <Text style={styles.headerText}>COLTIE SAGE</Text>
         </View>
-
         {/* Right - Refresh Button */}
-        <TouchableOpacity
-          onPress={() => console.log("History/Refresh action")}
-          style={styles.headerButton}
-        >
+        <TouchableOpacity onPress={() => console.log("History/Refresh action")} style={styles.headerButton}>
           <Ionicons name="refresh" size={24} color="white" />
         </TouchableOpacity>
       </View>
@@ -48,15 +36,11 @@ function CustomHeader({ navigation }) {
 export default function App() {
   return (
     <View style={{ flex: 1 }}>
-      {/* Background applied globally */}
+      {/* Global Background */}
       <BackgroundSVG style={styles.svgBackground} />
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Home">
-          <Stack.Screen
-            name="Home"
-            component={ChatScreen}
-            options={{ headerShown: false }} // Hide header for Home
-          />
+          <Stack.Screen name="Home" component={ChatScreen} options={{ headerShown: false }} />
           <Stack.Screen
             name="Chatbot"
             component={ChatbotScreen}

@@ -1,5 +1,3 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 # dependencies
 node_modules/
 
@@ -34,3 +32,88 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Ignore all .env files
+.env
+server/.env
+
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment Variables
+.env
+server/.env
+*.pem  # Private keys, AWS, or SSH keys
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE/Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# macOS System Files
+.DS_Store
+
+# Expo & React Native (for your mobile app)
+.expo/
+.expo-shared/
+android/.gradle/
+android/.idea/
+android/app/build/
+android/app/debug.keystore
+ios/Pods/
+ios/.DS_Store
+ios/build/
+ios/DerivedData/
+
+# Python (for the backend)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+*.egg-info/
+*.sqlite3
+
+# Miscellaneous
+coverage/
+dist/
+build/
+.cache/
+*.lock
+
+
+
+# macOS system files
+.DS_Store
+
+# Node.js dependencies
+node_modules/
+server/mimicbot/node_modules/
+
+# Python cache
+__pycache__/
+
+# Logs
+*.log
+
+# Build files
+server/mimicbot/build/
+server/mimicbot/.git
+server/mimicbot/package-lock.json
+
+# CocoaPods (iOS)
+ios/Podfile.lock
