@@ -12,7 +12,7 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const chatClient = useRef(null);
-  const isLoggingIn = useRef(false); 
+  const isLoggingIn = useRef(false);
 
   const addLog = (logMessage) => {
     setLogs((prev) => [...prev, logMessage]);
@@ -26,7 +26,7 @@ function App() {
   // Fetch token from Agora’s REST API.
   const fetchToken = async () => {
     try {
-      if (isLoggingIn.current) return; 
+      if (isLoggingIn.current) return;
       isLoggingIn.current = true;
 
       const url = `https://a41.chat.agora.io/411303875/1502849/token`;
@@ -85,6 +85,7 @@ function App() {
 
       chatClient.current = new AC.connection({ appKey });
 
+      // Register connection and message events using addEventHandler.
       chatClient.current.addEventHandler("chatEvents", {
         onConnected: () => {
           setIsLoggedIn(true);
@@ -95,10 +96,32 @@ function App() {
           addLog("❌ Disconnected from Agora Chat.");
         },
         onTextMessage: (msg) => {
-          addLog(`📩 Received from ${msg.from}: ${msg.msg}`);
+          addLog(`📩 Received text message from ${msg.from}: ${msg.msg}`);
           displayMessage(msg.from, msg.msg);
           if (msg.from === targetUser) {
             callWebhook(msg.msg);
+          }
+        },
+        onFileMessage: (msg) => {
+          // In this SDK version, file message properties are top-level.
+          if (!msg.filename) {
+            addLog(`❌ Received file message with missing filename. Full message: ${JSON.stringify(msg)}`);
+            return;
+          }
+          addLog(`📩 Received file message from ${msg.from}: ${msg.filename}`);
+          // If downloadAttachment is defined, use it; otherwise, use msg.url as fallback.
+          if (chatClient.current.chatManager && typeof chatClient.current.chatManager.downloadAttachment === "function") {
+            chatClient.current.chatManager.downloadAttachment(msg)
+              .then((localPath) => {
+                addLog(`✅ File downloaded to: ${localPath}`);
+                displayMessage(msg.from, `File received: ${msg.filename}`);
+              })
+              .catch((err) => {
+                addLog(`❌ Error downloading file: ${err.message}`);
+              });
+          } else {
+            addLog("❌ downloadAttachment method is undefined; using msg.url as fallback.");
+            displayMessage(msg.from, `File received: ${msg.filename} at ${msg.url}`);
           }
         },
         onError: (error) => {
@@ -140,7 +163,7 @@ function App() {
 
   const callWebhook = async (receivedMessage) => {
     try {
-      const webhookUrl = "http://localhost:5001/webhook"; 
+      const webhookUrl = "http://localhost:5001/webhook";
       addLog(`🔄 Calling webhook with message: ${receivedMessage}`);
       const response = await fetch(webhookUrl, {
         method: "POST",
