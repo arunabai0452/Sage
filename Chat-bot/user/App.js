@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
-import { Ionicons } from "@expo/vector-icons"; // Icons for back & refresh
+import { Ionicons } from "@expo/vector-icons"; 
 import ChatScreen from "./src/screens/chatScreen";
 import ChatbotScreen from "./src/screens/chatBotScreen";
 import BackgroundSVG from "./assets/icons/BackgroundSVG";

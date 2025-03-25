@@ -18,12 +18,15 @@ import {
   loginAgoraUserWithToken,
   addAgoraListeners,
   sendMessageToBot,
+  sendFileMessageToBot,
 } from "../API/AgoraAPI";
+import * as FileSystem from 'expo-file-system';
 
 const ChatbotScreen = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [showCart, setShowCart] = useState(true);
+  const [attachedFile, setAttachedFile] = useState(null);
 
   const suggestions = [
     "Admissions",
@@ -36,7 +39,8 @@ const ChatbotScreen = () => {
 
   const USERNAME = "user123";
   const PASSWORD = "user123";
-  const TOKEN = "YWMtOV8EHPPLEe-0jN3Jss_N-RBFmRUpQ0DOj9Ki8BCWU3W_fyRA8xgR74CnDWsnEgSXAwMAAAGVP1AFrTeeSAAA7kV1AgoV3U0wKUC6v-D1lLympYP098732Wc_cSxHIw"
+  const TOKEN =
+    "YWMtOV8EHPPLEe-0jN3Jss_N-RBFmRUpQ0DOj9Ki8BCWU3W_fyRA8xgR74CnDWsnEgSXAwMAAAGVP1AFrTeeSAAA7kV1AgoV3U0wKUC6v-D1lLympYP098732Wc_cSxHIw";
   const BOT_USERNAME = "mimicbot";
 
   useEffect(() => {
@@ -52,7 +56,7 @@ const ChatbotScreen = () => {
               ...prev,
               {
                 id: Date.now(),
-                message: m.body.content, 
+                message: m.body.content,
                 type: m.from === BOT_USERNAME ? "bot" : "user",
               },
             ]);
@@ -67,11 +71,20 @@ const ChatbotScreen = () => {
     setShowCart(input.trim() === "" && messages.length === 0);
   }, [input, messages]);
 
-  const handleSetMessage = (inputText) => {
-    if (inputText.trim() !== "") {
+  const handleSetMessage = async (inputText) => {
+    if (attachedFile) {
+      await sendFileMessageToBot(
+        BOT_USERNAME,
+        attachedFile.uri,
+        attachedFile.name,
+        attachedFile.size
+      );
+      setAttachedFile(null); // Clear file info after sending
+      setInput("");
+    } else if (inputText.trim() !== "") {
       const userMessage = { id: Date.now(), message: inputText, type: "user" };
       setMessages((prev) => [...prev, userMessage]);
-      sendMessageToBot(BOT_USERNAME, inputText);
+      await sendMessageToBot(BOT_USERNAME, inputText);
       setInput("");
     }
   };
@@ -81,7 +94,32 @@ const ChatbotScreen = () => {
       const result = await DocumentPicker.pick({
         type: [DocumentPicker.types.allFiles],
       });
+      const fileUri = result[0].uri;
       const fileName = result[0].name;
+      const fileSize = result[0].size; // optional
+
+      // Copy file to a persistent location
+      const newPath = FileSystem.documentDirectory + fileName;
+      await FileSystem.copyAsync({
+        from: fileUri,
+        to: newPath,
+      });
+      console.log("File copied to persistent location:", newPath);
+
+      // Verify file existence and log file info
+      const fileInfo = await FileSystem.getInfoAsync(newPath);
+      console.log("File info:", fileInfo);
+      if (!fileInfo.exists) {
+        console.error("File does not exist at persistent location:", newPath);
+        return;
+      }
+
+      // Store file info and update input preview
+      setAttachedFile({
+        uri: newPath,
+        name: fileName,
+        size: fileSize,
+      });
       setInput(`Attached file: ${fileName} - send it?`);
     } catch (err) {
       if (!DocumentPicker.isCancel(err)) {
@@ -219,8 +257,6 @@ const ChatbotScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
-
 
 const styles = StyleSheet.create({
   container: {

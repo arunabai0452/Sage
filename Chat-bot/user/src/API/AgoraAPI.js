@@ -89,7 +89,6 @@ export async function fetchNewToken(username, password) {
     }
   }
 
-// Function to login with token (calls fetchNewToken if necessary)
 export async function loginAgoraUserWithToken(username, password, token) {
     try {
       if (await isUserLoggedIn()) return;
@@ -106,9 +105,6 @@ export async function loginAgoraUserWithToken(username, password, token) {
     }
   }
 
-/**
- * Add listeners for connection and incoming messages.
- */
 export function addAgoraListeners({ onConnected, onDisconnected, onMessageReceived }) {
   chatClient.addConnectionListener({
     onConnected: () => {
@@ -128,9 +124,6 @@ export function addAgoraListeners({ onConnected, onDisconnected, onMessageReceiv
   });
 }
 
-/**
- * Send a text message to a target user (for example, your bot).
- */
 export async function sendMessageToBot(botUsername, text) {
     if (!chatClient.isConnected) {
       console.error("❌ Not connected. Cannot send message.");
@@ -138,10 +131,10 @@ export async function sendMessageToBot(botUsername, text) {
     }
     try {
       const message = new ChatMessage({
-        msgId: Date.now().toString(), // Unique ID
-        chatType: 0, // 0 = single chat
+        msgId: Date.now().toString(), 
+        chatType: 0, // 0 - single chat
         to: botUsername,
-        body: { type: 'txt', content: text }, // Use correct message structure
+        body: { type: 'txt', content: text }, 
         from: chatClient.currentUserName,
       });
   
@@ -153,4 +146,32 @@ export async function sendMessageToBot(botUsername, text) {
   }
 
 
+  export async function sendFileMessageToBot(botUsername, fileUri, fileName, fileSize) {
+    if (!chatClient.isConnected) {
+      console.error("❌ Not connected. Cannot send file message.");
+      return;
+    }
+    try {
+      // Remove the "file://" prefix if it exists.
+      let cleanFileUri = fileUri;
+      if (cleanFileUri.startsWith("file://")) {
+        cleanFileUri = cleanFileUri.substring(7);
+      }
   
+      // Use 0 as the chat type for a one-to-one chat.
+      const fileMessage = ChatMessage.createFileMessage(
+        botUsername,       // target
+        cleanFileUri,      
+        0,                 // chatType 0 for one-to-one chat 
+        {
+          displayName: fileName,
+          fileSize: fileSize, 
+        }
+      );
+      
+      await chatClient.chatManager.sendMessage(fileMessage);
+      console.log(`✅ Sent file message to ${botUsername}: ${fileName}`);
+    } catch (error) {
+      console.error("❌ Error sending file message:", error);
+    }
+  }
