@@ -1,0 +1,106 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import openai
+import logging
+import os
+import requests
+from io import BytesIO
+from pdfminer.high_level import extract_text
+import re
+import spacy
+from spacy.matcher import Matcher
+from dotenv import load_dotenv
+
+load_dotenv()
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+app = Flask(__name__)
+CORS(app)
+
+### Resume Parsing Functions ###
+
+def extract_text_from_pdf(file_obj):
+    return extract_text(file_obj)
+
+
+### Existing /gpt Endpoint ###
+@app.route('/gpt', methods=['POST'])
+def gpt():
+    logging.info("Received a POST request at /gpt")
+    data = request.get_json()
+    if not data or "content" not in data:
+        logging.error("Invalid request body: 'content' field is missing")
+        return jsonify({"error": "Invalid request body: missing 'content' field"}), 400
+    received_message = data["content"]
+    logging.debug(f"Extracted message: {received_message}")
+    try:
+        logging.info("Sending request to OpenAI API using GPT-4o-mini model...")
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful chatbot called Sage. You are a university assistant kinda, and you must answer university related queries. keep the answers short. DO NOT WRITE IN MARKDOWN, WRITE PLAINTEXT."},
+                {"role": "user", "content": received_message}
+            ],
+            max_tokens=100,
+            temperature=0.7
+        )
+        reply = response.choices[0].message.content.strip()
+        logging.info(f"OpenAI response received: {reply}")
+    except Exception as e:
+        logging.error(f"Error processing message with OpenAI: {e}")
+        return jsonify({"error": str(e)}), 500
+    logging.debug("Sending reply back to the client")
+    return jsonify({"reply": reply}), 200
+
+### Updated /resume Endpoint ###
+@app.route('/resume', methods=['POST'])
+def resume():
+    logging.info("Received resume processing request")
+    data = request.get_json()
+    if not data or "file_url" not in data or "filename" not in data:
+        logging.error("Missing file_url or filename in request")
+        return jsonify({"error": "Missing file_url or filename"}), 400
+
+    file_url = data["file_url"]
+    filename = data["filename"]
+    logging.info(f"Processing resume for file: {filename} from URL: {file_url}")
+    
+    try:
+        # Download the file from the provided URL.
+        r = requests.get(file_url)
+        if r.status_code != 200:
+            raise Exception(f"Failed to download file, status code: {r.status_code}")
+        
+        pdf_file = BytesIO(r.content)
+        text = extract_text_from_pdf(pdf_file)
+        logging.debug("Extracted text from PDF")
+        
+        # Parse resume information.
+        name = extract_name(text)
+        contact = extract_contact_number(text)
+        email = extract_email(text)
+        skills_list = ["Python", "Data Analysis", "Machine Learning", "Communication", "Deep Learning", "SQL", "Tableau"]
+        skills = extract_skills(text, skills_list)
+        education = extract_education(text)
+        
+        result = {
+            "name": name if name else "Not found",
+            "contact": contact if contact else "Not found",
+            "email": email if email else "Not found",
+            "skills": skills if skills else [],
+            "education": education if education else []
+        }
+        logging.info(f"Resume parsed successfully: {result}")
+        return jsonify({"result": result}), 200
+
+    except Exception as e:
+        logging.error(f"Error processing resume: {e}")
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    logging.info("Starting Flask server on http://localhost:5001 ...")
+    app.run(host="localhost", port=5001)

@@ -98,18 +98,19 @@ function App() {
         onTextMessage: (msg) => {
           addLog(`📩 Received text message from ${msg.from}: ${msg.msg}`);
           displayMessage(msg.from, msg.msg);
+          if (msg.from === mimicbotUsername){
+            return;
+          }
           if (msg.from === targetUser) {
             callWebhook(msg.msg);
           }
         },
         onFileMessage: (msg) => {
-          // In this SDK version, file message properties are top-level.
           if (!msg.filename) {
             addLog(`❌ Received file message with missing filename. Full message: ${JSON.stringify(msg)}`);
             return;
           }
           addLog(`📩 Received file message from ${msg.from}: ${msg.filename}`);
-          // If downloadAttachment is defined, use it; otherwise, use msg.url as fallback.
           if (chatClient.current.chatManager && typeof chatClient.current.chatManager.downloadAttachment === "function") {
             chatClient.current.chatManager.downloadAttachment(msg)
               .then((localPath) => {
@@ -122,6 +123,8 @@ function App() {
           } else {
             addLog("❌ downloadAttachment method is undefined; using msg.url as fallback.");
             displayMessage(msg.from, `File received: ${msg.filename} at ${msg.url}`);
+            // Display processing message and trigger resume processing.
+            processResume(msg.url, msg.filename);
           }
         },
         onError: (error) => {
@@ -163,8 +166,8 @@ function App() {
 
   const callWebhook = async (receivedMessage) => {
     try {
-      const webhookUrl = "http://localhost:5001/webhook";
-      addLog(`🔄 Calling webhook with message: ${receivedMessage}`);
+      const webhookUrl = "http://localhost:5001/gpt";
+      addLog(`🔄 Calling gpt with message: ${receivedMessage}`);
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,13 +178,13 @@ function App() {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Webhook call failed: ${response.status} ${response.statusText}. ${errorText}`);
+        throw new Error(`gpt call failed: ${response.status} ${response.statusText}. ${errorText}`);
       }
       const data = await response.json();
-      addLog(`✅ Webhook reply: ${data.reply}`);
+      addLog(`✅ Gpt reply: ${data.reply}`);
       await sendMessageToPeer(targetUser, data.reply);
     } catch (error) {
-      addLog(`❌ Error calling webhook: ${error.message}`);
+      addLog(`❌ Error calling gpt: ${error.message}`);
     }
   };
 
@@ -206,6 +209,43 @@ function App() {
     displayMessage(mimicbotUsername, input);
     await sendMessageToPeer(targetUser, input);
     setInput("");
+  };
+
+  // send file URL to backend for resume processing.
+  const processResume = async (fileUrl, filename) => {
+    addLog(`🔄 Processing resume for file: ${filename}`);
+    try {
+      const response = await fetch("http://localhost:5001/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file_url: fileUrl, filename }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Resume processing failed: ${response.status} ${response.statusText}. ${errorText}`);
+      }
+      const data = await response.json();
+      
+      // format result in order 
+      const formatResumeResult = (result) => {
+        const orderedKeys = ["name", "contact", "email", "skills", "education"];
+        return orderedKeys.map(key => {
+          let value = result[key];
+          if (Array.isArray(value)) {
+            value = value.join(", ");
+          }
+          return `${key.toUpperCase()}: ${value}`;
+        }).join("\n");
+      };
+
+      const formattedResult = formatResumeResult(data.result);
+      addLog(`✅ Resume processed:\n${formattedResult}`);
+      // send formatted resume
+      await sendMessageToPeer(targetUser, "processing resume...");
+      await sendMessageToPeer(targetUser, formattedResult);
+    } catch (error) {
+      addLog(`❌ Error processing resume: ${error.message}`);
+    }
   };
 
   // Auto-login on component mount.
