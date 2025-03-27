@@ -52,6 +52,8 @@ const ChatbotScreen = () => {
         onDisconnected: () => console.log("❌ user123 disconnected"),
         onMessageReceived: (msgs) => {
           msgs.forEach((m) => {
+            // Ignore messages sent by the current user
+            if (m.from === USERNAME) return;
             setMessages((prev) => [
               ...prev,
               {
@@ -79,6 +81,13 @@ const ChatbotScreen = () => {
         attachedFile.name,
         attachedFile.size
       );
+      const userMessage = {
+        id: Date.now(),
+        message: "Resume sent!",
+        type: "user", // So it appears from the user side
+      };
+      
+      setMessages((prev) => [...prev, userMessage]);
       setAttachedFile(null); // Clear file info after sending
       setInput("");
     } else if (inputText.trim() !== "") {
