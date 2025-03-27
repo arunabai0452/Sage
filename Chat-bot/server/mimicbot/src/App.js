@@ -229,13 +229,37 @@ function App() {
       // format result in order 
       const formatResumeResult = (result) => {
         const orderedKeys = ["name", "contact", "email", "skills", "education"];
-        return orderedKeys.map(key => {
-          let value = result[key];
+        
+        const formatValue = (value) => {
           if (Array.isArray(value)) {
-            value = value.join(", ");
+            // For arrays, format each element
+            return value
+              .map((item) => {
+                // If the item is an object, convert it to a string with its key-value pairs
+                if (typeof item === "object" && item !== null) {
+                  return Object.entries(item)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(", ");
+                }
+                return item;
+              })
+              .join(" | ");
+          } else if (typeof value === "object" && value !== null) {
+            // For a single object, format its entries
+            return Object.entries(value)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ");
           }
-          return `${key.toUpperCase()}: ${value}`;
-        }).join("\n");
+          return value;
+        };
+      
+        return orderedKeys
+          .map((key) => {
+            let value = result[key];
+            value = formatValue(value);
+            return `${key.toUpperCase()}: ${value}`;
+          })
+          .join("\n");
       };
 
       const formattedResult = formatResumeResult(data.result);
