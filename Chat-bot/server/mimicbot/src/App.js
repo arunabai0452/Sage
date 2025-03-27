@@ -111,21 +111,11 @@ function App() {
             return;
           }
           addLog(`📩 Received file message from ${msg.from}: ${msg.filename}`);
-          if (chatClient.current.chatManager && typeof chatClient.current.chatManager.downloadAttachment === "function") {
-            chatClient.current.chatManager.downloadAttachment(msg)
-              .then((localPath) => {
-                addLog(`✅ File downloaded to: ${localPath}`);
-                displayMessage(msg.from, `File received: ${msg.filename}`);
-              })
-              .catch((err) => {
-                addLog(`❌ Error downloading file: ${err.message}`);
-              });
-          } else {
-            addLog("❌ downloadAttachment method is undefined; using msg.url as fallback.");
-            displayMessage(msg.from, `File received: ${msg.filename} at ${msg.url}`);
-            // Display processing message and trigger resume processing.
-            processResume(msg.url, msg.filename);
-          }
+          displayMessage(msg.from, `File received: ${msg.filename} `);
+          // at ${msg.url}
+          // Display processing message and trigger resume processing.
+          sendMessageToPeer(targetUser, "processing resume...");
+          processResume(msg.url, msg.filename); 
         },
         onError: (error) => {
           if (error.message.includes("already logged on another device")) {
@@ -265,10 +255,10 @@ function App() {
       const formattedResult = formatResumeResult(data.result);
       addLog(`✅ Resume processed:\n${formattedResult}`);
       // send formatted resume
-      await sendMessageToPeer(targetUser, "processing resume...");
       await sendMessageToPeer(targetUser, formattedResult);
     } catch (error) {
       addLog(`❌ Error processing resume: ${error.message}`);
+      await sendMessageToPeer(targetUser, "error processing resume...");
     }
   };
 
